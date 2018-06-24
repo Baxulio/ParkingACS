@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>72</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Attraction</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="accesscontrollerresources.qrc">
+    <normaloff>:/resources/logo.png</normaloff>:/resources/logo.png</iconset>
+  </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <property name="toolButtonStyle">
+   <enum>Qt::ToolButtonTextBesideIcon</enum>
+  </property>
+  <property name="documentMode">
+   <bool>false</bool>
+  </property>
+  <property name="tabShape">
+   <enum>QTabWidget::Rounded</enum>
+  </property>
+  <property name="dockNestingEnabled">
+   <bool>false</bool>
+  </property>
+  <property name="unifiedTitleAndToolBarOnMac">
+   <bool>true</bool>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QVBoxLayout" name="verticalLayout_15">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QFrame" name="frame_2">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>50</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>60</height>
+       </size>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QFrame{
+background-color: rgb(255, 255, 255);
+}
+QPushButton{
+    border: none; /* no border for a flat push button */
+}
+
+QPushButton:hover{
+	text-decoration: underline;
+}</string>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::NoFrame</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <property name="midLineWidth">
+       <number>-5</number>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <property name="spacing">
+        <number>20</number>
+       </property>
+       <property name="leftMargin">
+        <number>10</number>
+       </property>
+       <property name="topMargin">
+        <number>10</number>
+       </property>
+       <property name="rightMargin">
+        <number>10</number>
+       </property>
+       <property name="bottomMargin">
+        <number>10</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="label_2">
+         <property name="font">
+          <font>
+           <pointsize>12</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color: rgb(70, 70, 70);</string>
+         </property>
+         <property name="text">
+          <string>Аттракцион </string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="Line" name="line_12">
+         <property name="minimumSize">
+          <size>
+           <width>1</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>1</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color:rgba(230, 230, 230, 255);</string>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="connectButton">
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>Соединить</string>
+         </property>
+         <property name="icon">
+          <iconset resource="accesscontrollerresources.qrc">
+           <normaloff>:/resources/glyphs/23.png</normaloff>:/resources/glyphs/23.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="disconnectButton">
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>Разъединить</string>
+         </property>
+         <property name="icon">
+          <iconset resource="accesscontrollerresources.qrc">
+           <normaloff>:/resources/glyphs/50.png</normaloff>:/resources/glyphs/50.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="Line" name="line_11">
+         <property name="minimumSize">
+          <size>
+           <width>1</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>1</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color:rgba(230, 230, 230, 255);</string>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="configureButton">
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>Настройки</string>
+         </property>
+         <property name="icon">
+          <iconset resource="accesscontrollerresources.qrc">
+           <normaloff>:/resources/glyphs/34.png</normaloff>:/resources/glyphs/34.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="aboutButton">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="icon">
+          <iconset resource="accesscontrollerresources.qrc">
+           <normaloff>:/resources/glyphs/info.png</normaloff>:/resources/glyphs/info.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="flat">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="action_disabled_autorefresh">
+   <property name="text">
+    <string> Отключено</string>
+   </property>
+  </action>
+  <action name="action_autorefresh_1_sec">
+   <property name="text">
+    <string>1 секунд</string>
+   </property>
+  </action>
+  <action name="action_autorefresh_5_sec">
+   <property name="text">
+    <string>5 секунд</string>
+   </property>
+   <property name="toolTip">
+    <string>5 секунд</string>
+   </property>
+  </action>
+  <action name="action_autorefresh_10_sec">
+   <property name="text">
+    <string>10 секунд</string>
+   </property>
+   <property name="toolTip">
+    <string>10 секунд</string>
+   </property>
+  </action>
+  <action name="action_autorefresh_20_sec">
+   <property name="text">
+    <string>20 секунд</string>
+   </property>
+   <property name="toolTip">
+    <string>20 секунд</string>
+   </property>
+  </action>
+  <action name="action_autorefresh_35_sec">
+   <property name="text">
+    <string>35 секунд</string>
+   </property>
+   <property name="toolTip">
+    <string>35 секунд</string>
+   </property>
+  </action>
+  <action name="action_autorefresh_1_min">
+   <property name="text">
+    <string>1 минут</string>
+   </property>
+   <property name="toolTip">
+    <string>1 минут</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources>
+  <include location="accesscontrollerresources.qrc"/>
+ </resources>
+ <connections/>
+</ui>
