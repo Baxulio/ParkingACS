@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui sql printsupport
+QT       += core gui sql
 CONFIG += c++11
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -27,25 +27,16 @@ SOURCES += \
         main.cpp \
         MainWindow.cpp \
     dialogs/SettingsDialog.cpp \
-    delegates/ProductTypesDelegate.cpp
+    FileDownloader.cpp
 
 HEADERS += \
         MainWindow.h \
     dialogs/SettingsDialog.h \
-    delegates/ProductTypesDelegate.h
+    FileDownloader.h
 
 FORMS += \
         MainWindow.ui \
-    dialogs/SettingsDialog.ui \
-    delegates/ProductTypesDelegate.ui
-
-LIBS += -lwiringPi -lpthread
-#unix:!macx: LIBS += -lpigpio   USE THIS IF YOU WORK WITH PIGPIO
-
-unix:!macx: LIBS += -L$$OUT_PWD/../Core/ -lCore
-
-INCLUDEPATH += $$PWD/../Core
-DEPENDPATH += $$PWD/../Core
+    dialogs/SettingsDialog.ui
 
 # Set your rules for deployment.
 #qnx: target.path = /tmp/$${TARGET}/bin
@@ -55,3 +46,11 @@ DEPENDPATH += $$PWD/../Core
 RESOURCES += \
     accesscontrollerresources.qrc
 
+unix|win32: LIBS += -lopenalpr
+unix:!macx: LIBS += -lwiringPi -lpthread
+#unix:!macx: LIBS += -lpigpio   USE THIS IF YOU WORK WITH PIGPIO
+
+unix:!macx: LIBS += -L$$OUT_PWD/../Core/ -lCore
+
+INCLUDEPATH += $$PWD/../Core
+DEPENDPATH += $$PWD/../Core

@@ -7,8 +7,10 @@
 
 #include "dialogs/SettingsDialog.h"
 #include "Core.h"
+
 #include "wiringPi.h"
 
+#include <QLabel>
 #include <QTimer>
 
 namespace Ui {
@@ -23,8 +25,6 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    void wiegandCallback(quint32 code);
-
 private:
     Ui::MainWindow *ui;
     DatabaseManager &bDb;
@@ -32,25 +32,28 @@ private:
     SettingsDialog *bSettings;
     QTimer bTimer;
 
-    QSqlRecord enterRec;
-    QSqlRecord exitRec;
-
 
 protected:
     void closeEvent(QCloseEvent *event) override;
 
+private slots:
+    void about();
+    void makeConnection();
+    void makeDisconnection();
+
+    void print(const QString &dur, double price, const QDateTime &in_time, const QDateTime &out_time, const quint32 in);
+
+public slots:
+    void wiegandCallback(quint32 value);
+    void showStatusMessage(const QString &message);
+
 private:
     void initActionsConnections();
+
     void readSettings();
     void writeSettings();
 
-    bool enter(quint32 code);
-    bool exit(quint32 code);
-
-    void print(const QString &title, const QSqlRecord &record);
-public slots:
-    void interrupt();
-    void timeout();
+    void openBareer();
 };
 
 #endif // MAINWINDOW_H

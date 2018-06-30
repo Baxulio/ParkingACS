@@ -12,7 +12,7 @@
 
 class QSqlDatabase;
 
-const QString DATABASE = "attraction";
+const QString DATABASE = "parking_acs";
 const QString HOST = "localhost";
 const QString USER = "root";
 const QString PASSWORD = "";

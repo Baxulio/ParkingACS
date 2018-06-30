@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>600</width>
+    <width>590</width>
     <height>72</height>
    </rect>
   </property>
@@ -116,7 +116,7 @@ QPushButton:hover{
           <string notr="true">color: rgb(70, 70, 70);</string>
          </property>
          <property name="text">
-          <string>Аттракцион </string>
+          <string>ParkingACS</string>
          </property>
         </widget>
        </item>
@@ -162,7 +162,7 @@ QPushButton:hover{
           <string>Соединить</string>
          </property>
          <property name="icon">
-          <iconset resource="accesscontrollerresources.qrc">
+          <iconset>
            <normaloff>:/resources/glyphs/23.png</normaloff>:/resources/glyphs/23.png</iconset>
          </property>
         </widget>
@@ -181,7 +181,7 @@ QPushButton:hover{
           <string>Разъединить</string>
          </property>
          <property name="icon">
-          <iconset resource="accesscontrollerresources.qrc">
+          <iconset>
            <normaloff>:/resources/glyphs/50.png</normaloff>:/resources/glyphs/50.png</iconset>
          </property>
         </widget>
@@ -228,7 +228,7 @@ QPushButton:hover{
           <string>Настройки</string>
          </property>
          <property name="icon">
-          <iconset resource="accesscontrollerresources.qrc">
+          <iconset>
            <normaloff>:/resources/glyphs/34.png</normaloff>:/resources/glyphs/34.png</iconset>
          </property>
         </widget>
@@ -255,7 +255,7 @@ QPushButton:hover{
           <string/>
          </property>
          <property name="icon">
-          <iconset resource="accesscontrollerresources.qrc">
+          <iconset>
            <normaloff>:/resources/glyphs/info.png</normaloff>:/resources/glyphs/info.png</iconset>
          </property>
          <property name="iconSize">

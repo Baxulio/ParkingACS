@@ -2,6 +2,7 @@
 #include <QApplication>
 
 ///////////////////////// WIEGAND
+
 #include <signal.h>
 #include <sys/time.h>
 
@@ -15,12 +16,9 @@ int setup_wiegand_timeout_handler();
 void add_bit_w26(int bit);
 void d0_pulse(void);
 void d1_pulse(void);
-void interrupt(void);
-
 bool gpio_init();
 
 ///////////////////////////////////
-
 
 int main(int argc, char *argv[])
 {
@@ -28,7 +26,7 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     QCoreApplication::setOrganizationName("Baxulio");
-    QCoreApplication::setApplicationName("Attraction");
+    QCoreApplication::setApplicationName("ParkingACS");
     QCoreApplication::setApplicationVersion(QT_VERSION_STR);
 
     MainWindow main;
@@ -39,6 +37,37 @@ int main(int argc, char *argv[])
     main.show();
 
     return app.exec();
+
+//    Alpr openalpr("eu");
+//    openalpr.setTopN(10);
+//    openalpr.setDefaultRegion("de");
+
+//    if(openalpr.isLoaded()==false){
+//        qDebug() << "Error loading OpenALPR";
+//        return -1;
+//    }
+
+//    QElapsedTimer timer;
+//    timer.start();
+
+//    AlprResults results = openalpr.recognize("/home/bahman/Downloads/cars/10517006.jpg");
+//    qDebug()<<"elapsed: "<<timer.elapsed();
+//    for (int i = 0; i < results.plates.size(); i++)
+//    {
+//        AlprPlateResult plate = results.plates[i];
+//        qDebug() << "plate" << i << ": " << plate.topNPlates.size() << " results\n";
+
+//        for (int k = 0; k < plate.topNPlates.size(); k++)
+//        {
+//            alpr::AlprPlate candidate = plate.topNPlates[k];
+//            qDebug() << "    - " << QString::fromStdString(candidate.characters) << "\t confidence: " << candidate.overall_confidence;
+//            qDebug() << "\t pattern_match: " << candidate.matches_template << "\n";
+//        }
+//    }
+//    qDebug()<<"elapsed: "<<timer.elapsed()<<QString::fromStdString(openalpr.getVersion());
+
+
+//    return app.exec();
 }
 
 ///////////////////////// WIEGAND
@@ -80,9 +109,8 @@ void reset_timeout_timer(long usec) {
 
 void wiegand_timeout(int u) {
     wiegand_sequence_reset();
-    if(wds.code_valid and digitalRead(BAREER_PIN)==LOW){
+    if(wds.code_valid)
         w->wiegandCallback(wds.full_code);
-    }
 }
 
 int setup_wiegand_timeout_handler() {
@@ -167,10 +195,6 @@ void d1_pulse() {
     add_bit_w26(1);
 }
 
-void interrupt(void){
-    w->interrupt();
-}
-
 bool gpio_init() {
 
     if(setup_wiegand_timeout_handler()!=0)return false;
@@ -180,18 +204,13 @@ bool gpio_init() {
     options.d0pin = D0_PIN;
     options.d1pin = D1_PIN;
 
-    pinMode(BAREER_PIN, OUTPUT);
-    pinMode(BREAK_PIN, INPUT);
+    pinMode (BAREER_PIN, OUTPUT);
 
     pinMode(options.d0pin, INPUT);
     pinMode(options.d1pin, INPUT);
 
-    pullUpDnControl(BREAK_PIN, PUD_UP);
-
     pullUpDnControl(options.d0pin, PUD_OFF);
     pullUpDnControl(options.d1pin, PUD_OFF);
-
-    wiringPiISR(BREAK_PIN, INT_EDGE_FALLING, interrupt);
 
     wiringPiISR(options.d0pin, INT_EDGE_FALLING, d0_pulse);
     wiringPiISR(options.d1pin, INT_EDGE_FALLING, d1_pulse);
