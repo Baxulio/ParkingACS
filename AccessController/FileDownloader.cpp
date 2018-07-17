@@ -1,4 +1,4 @@
-#include "filedownloader.h"
+#include "FileDownloader.h"
 
 FileDownloader::FileDownloader(QUrl imageUrl, QObject *parent) :
     QObject(parent)

@@ -16,8 +16,6 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    connect(&bTimer, &QTimer::timeout, this, &MainWindow::timeout);
-
     readSettings();
     initActionsConnections();
 
@@ -41,6 +39,36 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     writeSettings();
     event->accept();
+}
+
+void MainWindow::about()
+{
+
+}
+
+void MainWindow::makeConnection()
+{
+
+}
+
+void MainWindow::makeDisconnection()
+{
+
+}
+
+void MainWindow::print(const QString &dur, double price, const QDateTime &in_time, const QDateTime &out_time, const quint32 in)
+{
+
+}
+
+void MainWindow::wiegandCallback(quint32 value)
+{
+
+}
+
+void MainWindow::showStatusMessage(const QString &message)
+{
+
 }
 
 void MainWindow::initActionsConnections()
@@ -118,9 +146,4 @@ void MainWindow::writeSettings()
     settings.setValue("bareer_number",mode.bareerNumber);
     settings.setValue("mode",mode.mode);
     settings.setValue("wait_time",mode.wait_time);
-}
-
-void MainWindow::timeout()
-{
-    bTimer.stop();
 }
