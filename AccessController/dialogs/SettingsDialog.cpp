@@ -1,11 +1,9 @@
 #include "SettingsDialog.h"
 #include "ui_SettingsDialog.h"
 
-SettingsDialog::SettingsDialog(QWidget *parent, SettingsDialog::ServerSettings server, SettingsDialog::ModeSettings mode):
+SettingsDialog::SettingsDialog(QWidget *parent):
     QDialog(parent),
-    ui(new Ui::SettingsDialog),
-    bServerSettings(server),
-    bMode(mode)
+    ui(new Ui::SettingsDialog)
 {
     ui->setupUi(this);
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &SettingsDialog::apply);
@@ -36,7 +34,7 @@ void SettingsDialog::setMode(const SettingsDialog::ModeSettings mode)
     bMode = mode;
     ui->barrier_number_spin->setValue(bMode.bareerNumber);
     bMode.mode?ui->enterRadio->setChecked(true):ui->exitRadio->setChecked(true);
-//    ui->wait_time_spin->setValue(bMode.wait_time);
+    ui->camera_ip_edit->setText(bMode.cameraIP);
 }
 
 void SettingsDialog::updateSettings()
@@ -48,5 +46,5 @@ void SettingsDialog::updateSettings()
 
     bMode.bareerNumber = ui->barrier_number_spin->value();
     bMode.mode = ui->enterRadio->isChecked()?true:false;
-//    bMode.wait_time = ui->wait_time_spin->value();
+    bMode.cameraIP = ui->camera_ip_edit->text();
 }

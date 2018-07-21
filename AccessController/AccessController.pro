@@ -10,6 +10,8 @@ CONFIG += c++11
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
+QTPLUGIN += gif
+
 TARGET = AccessController
 TEMPLATE = app
 
@@ -27,13 +29,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         MainWindow.cpp \
-    dialogs/SettingsDialog.cpp \
-    FileDownloader.cpp
+    dialogs/SettingsDialog.cpp
 
 HEADERS += \
         MainWindow.h \
-    dialogs/SettingsDialog.h \
-    FileDownloader.h
+    dialogs/SettingsDialog.h
 
 FORMS += \
         MainWindow.ui \

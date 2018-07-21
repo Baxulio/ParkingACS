@@ -22,15 +22,10 @@ public:
     struct ModeSettings {
         quint8 bareerNumber;
         bool mode;
-        quint64 wait_time;
+        QString cameraIP;
     };
 
-    explicit SettingsDialog(QWidget *parent = nullptr,
-                            ServerSettings server = ServerSettings{QString("localhost"),
-                            QString("root"),
-                            QString(""),
-                            quint32(3306)},
-                            ModeSettings mode = ModeSettings{quint8(1),bool(true),quint64(30)});
+    explicit SettingsDialog(QWidget *parent = nullptr);
     ~SettingsDialog();
 
     ServerSettings serverSettings() const {return bServerSettings;}

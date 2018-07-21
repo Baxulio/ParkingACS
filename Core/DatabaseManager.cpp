@@ -6,22 +6,21 @@
 
 void DatabaseManager::debugQuery(const QSqlQuery& query)
 {
-    switch (query.lastError().type()) {
-    case QSqlError::ErrorType::NoError:
-        qDebug() << "Query OK:"  << query.lastQuery();
-        break;
-    default:
-        qWarning() << "Query KO:" << query.lastError().text();
-        qWarning() << "Query text:" << query.lastQuery();
-        instance().closeConnection();
-        break;
-    }
+    instance().debugError(query.lastError());
 }
 
 void DatabaseManager::debugError(const QSqlError &error)
 {
-    qWarning() << "Query KO:" << error.text();
-    instance().closeConnection();
+    switch (error.type()) {
+    case QSqlError::ErrorType::NoError:
+        qDebug() << "Query OK:"  << error.text();
+        break;
+    default:
+        qWarning() << "Query KO:" << error.text();
+        qWarning() << "Query text:" << error.text();
+        instance().closeConnection();
+        break;
+    }
 }
 
 DatabaseManager&DatabaseManager::instance()
@@ -57,6 +56,7 @@ void DatabaseManager::connectToDatabase(const QString &host, const QString &user
     bDatabase->setHostName(host);
     bDatabase->setPort(port);
     if(!bDatabase->open(user,password)){
+        qDebug()<<bDatabase->lastError().text();
         closeConnection();
         return;
     }
