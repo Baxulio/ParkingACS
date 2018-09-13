@@ -216,11 +216,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QLineEdit" name="camera_ip_edit">
-           <property name="inputMask">
-            <string>0000.0000.0000.0000</string>
-           </property>
-          </widget>
+          <widget class="QLineEdit" name="camera_ip_edit"/>
          </item>
         </layout>
        </item>

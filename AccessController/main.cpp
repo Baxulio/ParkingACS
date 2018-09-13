@@ -1,11 +1,6 @@
 #include "MainWindow.h"
 #include <QApplication>
 
-#include <QPixmap>
-#include <QWidget>
-#include <QLabel>
-#include <QLayout>
-
 ///////////////////////// WIEGAND
 
 #include <signal.h>
@@ -84,7 +79,7 @@ void reset_timeout_timer(long usec) {
 void wiegand_timeout(int u) {
     wiegand_sequence_reset();
     if(wds.code_valid)
-        w->wiegandCallback(wds.full_code);
+        w->proceedCode(QString::number(wds.full_code));
 }
 
 int setup_wiegand_timeout_handler() {

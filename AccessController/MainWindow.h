@@ -7,16 +7,12 @@
 #include "dialogs/SettingsDialog.h"
 #include "Core.h"
 
-#include "wiringPi.h"
 #include "alpr.h"
 
-#include <QLabel>
+#include "wiringPi.h"
+
 #include <QTimer>
 #include <QMovie>
-
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
-#include <QNetworkReply>
 
 namespace Ui {
 class MainWindow;
@@ -35,33 +31,22 @@ private:
     DatabaseManager &bDb;
     SettingsDialog *bSettings;
 
-    alpr::Alpr openalpr;
-    alpr::AlprResults results;
-
-    QNetworkAccessManager manager;
-    QNetworkRequest request;
-    QByteArray currentFrame;
-
     QTimer bTimer;
     QMovie movie;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
 
-private slots:
-    void proceedCode(QString code, bool plateMode);
-    void handleReply(QNetworkReply *pReply);
-
 public slots:
-    void wiegandCallback(quint32 value);
-    void showStatusMessage(const QString &message);
+    void proceedCode(const QString &code, alpr::AlprResults results = alpr::AlprResults(), bool plateMode=false);
 
-private:
-    void initActionsConnections();
+private slots:
+    void initConnections();
 
     void readSettings();
     void writeSettings();
 
+    void cleanupInterface();
     void openBareer();
     void print(const QString &code, const QString &dur, double price, const QDateTime &in_time, const QDateTime &out_time, const quint32 in);
     double calculate_formula(const QString &formula, const quint64 &secs);

@@ -7,6 +7,7 @@
         <file>resources/info.png</file>
         <file>resources/logo.png</file>
         <file>resources/warning.png</file>
-        <file>resources/information.gif</file>
+        <file>images/information-optimized.gif</file>
+        <file>images/notConnected-optimized.gif</file>
     </qresource>
 </RCC>

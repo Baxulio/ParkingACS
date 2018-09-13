@@ -5,7 +5,13 @@
 #include <QCloseEvent>
 #include <QDesktopWidget>
 #include <QMessageBox>
+
 #include <QDateTime>
+
+#include "CustomServer.h"
+#include <QTcpSocket>
+
+//#include <QJsonDocument>
 
 #include <QDebug>
 
@@ -13,53 +19,77 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     bDb(DatabaseManager::instance()),
-    bSettings(new SettingsDialog(this)),
-    openalpr("eu")
+    bSettings(new SettingsDialog(this))
 {
     ui->setupUi(this);
 
-    openalpr.setDefaultRegion("uz");
-//        openalpr.setTopN(15);
+    readSettings();
+    initConnections();
 
-    if(!openalpr.isLoaded()){
+    CustomServer *server = new CustomServer(this);
+
+    server->setMaxPendingConnections(4);
+    if(server->listen(QHostAddress::AnyIPv4, 1234)){
+        connect(server, &CustomServer::newConnection, [this,server]{
+
+            qDebug()<<"New connection";
+            QTcpSocket *socket = server->nextPendingConnection();
+
+            connect(socket, &QTcpSocket::readyRead, [this,socket,server]{
+                QByteArray arr = server->sockets.value(socket->socketDescriptor()) + socket->readAll();
+                //                qDebug()<<arr;
+
+                if(!arr.endsWith("\"}")){
+                    server->sockets.insert(socket->socketDescriptor(),arr);
+                    //                    qDebug()<<"continue_fucking";
+                    socket->write("HTTP/1.1 100 Continue\r\n\r\n");
+                    return;
+                }
+
+                arr = arr.mid(arr.indexOf('{'));
+
+                //                qDebug()<<"again"<<arr;
+                //        QJsonDocument doc;
+                //        QJsonObject obj;
+                //        QJsonParseError error;
+
+                //            doc = QJsonDocument::fromJson(arr,&error);
+
+                //            if(error.error != QJsonParseError::NoError){
+                //                qDebug()<<error.errorString();
+                //                socket->write("HTTP/1.1 400 Bad Request\r\n\r\n");
+                //                return;
+                //            }
+                //            obj = doc.object();
+
+                proceedCode(QString(),alpr::Alpr::fromJson(arr.toStdString()),true);
+
+                socket->write("HTTP/1.1 200 OK\r\n\r\n");
+                socket->close();
+            });
+            connect(socket, &QTcpSocket::disconnected, [socket,server]{
+                qDebug()<<"socket deleted";
+                server->sockets.remove(socket->socketDescriptor());
+                socket->deleteLater();
+            });
+
+            if(!socket->waitForReadyRead(500)){
+                socket->write("HTTP/1.1 400 Bad Request\r\n\r\n");
+                socket->close();
+            }
+
+        });
+    }
+    else {
+        qDebug()<<"Couldn't start server";
         exit(EXIT_FAILURE);
     }
 
-    readSettings();
-    initActionsConnections();
-
-    //    manager.connectToHost(bSettings->modeSettings().cameraIP,34567);
-    request.setUrl(QUrl("http://192.168.0.238/webcapture.jpg?command=snap&channel=1"));
-
-    connect(&bDb,&DatabaseManager::connectionChanged, [this](bool status){
-        if(status){
-            ui->statusBar->showMessage("Successfully connected!");
-            qDebug()<<"request";
-            manager.get(request);
-            qDebug()<<"success";
-        }
-        else exit(EXIT_FAILURE);
-    });
-
-    movie.setFileName(":/resources/information.gif");
+    movie.setFileName(":/images/notConnected-optimized.gif");
     bTimer.setInterval(5000);
+    cleanupInterface();
 
-    connect(&bTimer, &QTimer::timeout, [this]{
-        ui->label->setMovie(&movie);
-        movie.start();
-
-        ui->enter_time_label->setText("");
-        ui->enter_bareer_label->setText("");
-        ui->plate_number_label->setText("Ожидание!");
-
-        if(!bSettings->modeSettings().mode){
-            ui->exit_time_label->setText("");
-            ui->exit_bareer_label->setText("");
-        }
-    });
-
-    connect(&manager, &QNetworkAccessManager::finished, this, &MainWindow::handleReply);
-//    ui->connectButton->click();
+    //    ui->connectButton->click();
 }
 
 MainWindow::~MainWindow()
@@ -74,31 +104,16 @@ void MainWindow::closeEvent(QCloseEvent *event)
     event->accept();
 }
 
-void MainWindow::print(const QString &code, const QString &dur, double price, const QDateTime &in_time, const QDateTime &out_time, const quint32 in)
-{
-    char t[1000];
-    sprintf(t,"printf '********************************\nTashkent Trade Center [%02d]\n\nKod: %d\nKirish vaqti: %s\nChiqish vaqti: %s\nTurgan vaqti: %s\nPul miqdori: %.2f\nKirish #: %d\n********** powered by GSS.UZ\n\n\n\n' >/dev/usb/lp0",
-            bSettings->modeSettings().bareerNumber,
-            code.toLatin1().data(),
-            in_time.toString("dd.MM.yyyy H:mm").toLatin1().data(),
-            out_time.toString("dd.MM.yyyy H:mm").toLatin1().data(),
-            dur.toLatin1().data(),
-            price,
-            in);
-    system(t);
-}
-
-void MainWindow::proceedCode(QString code, bool plateMode)
+void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, bool plateMode)
 {
     movie.stop();
     bTimer.stop();
 
-    if(!plateMode){
-        disconnect(&manager, &QNetworkAccessManager::finished, NULL, NULL);
-    }
+    QString plate;
+    if(plateMode)
+        plate=QString::fromStdString(results.plates.front().bestPlate.characters);
 
     QSqlQuery query;
-
 
     if(!query.exec(QString("SELECT SYSDATE();"))){
         bDb.debugQuery(query);
@@ -110,7 +125,7 @@ void MainWindow::proceedCode(QString code, bool plateMode)
     QDateTime b_out_time = query.value("SYSDATE()").toDateTime();
 
     if(!query.exec(QString("SELECT id, in_time,in_number "
-                           "FROM Active WHERE code='%1';").arg(code))){
+                           "FROM Active WHERE code='%1';").arg(plateMode?plate:code))){
         bDb.debugQuery(query);
         return;
     }
@@ -122,7 +137,7 @@ void MainWindow::proceedCode(QString code, bool plateMode)
         if(query.isValid()){
 
             ui->label->setText(QString("<p align=\"center\"><span style=\"font-size:100pt; color:#005500;\">%1</span></p>")
-                               .arg(code));
+                               .arg(plateMode?plate:code));
             ui->plate_number_label->setText("Уже зарегистрирован!");
             ui->enter_time_label->setText(query.value("in_time").toDateTime().toString("dd.MM.yyyy H:mm"));
             ui->enter_bareer_label->setText(QString::number(bSettings->modeSettings().bareerNumber));
@@ -131,20 +146,14 @@ void MainWindow::proceedCode(QString code, bool plateMode)
 
             bTimer.start();
 
-            if(!plateMode){
-                connect(&manager, &QNetworkAccessManager::finished, this, &MainWindow::handleReply);
-                manager.get(request);
-            }
-
             return;
         }
-    qDebug()<<code<<b_out_time;
         query.prepare("INSERT INTO Active(`code`, `in_time`, `in_number`, `img`) "
                       "VALUES(?,?,?,?);");
-        query.addBindValue(code);
+        query.addBindValue(plateMode?plate:code);
         query.addBindValue(b_out_time);
         query.addBindValue(bSettings->modeSettings().bareerNumber);
-        query.addBindValue(plateMode?QString(currentFrame):"");
+        query.addBindValue(plateMode?QString::number(results.epoch_time):"");
 
         if(!query.exec()){
             bDb.debugQuery(query);
@@ -152,7 +161,7 @@ void MainWindow::proceedCode(QString code, bool plateMode)
         }
 
         ui->label->setText(QString("<p align=\"center\"><span style=\"font-size:100pt; color:#005500;\">%1</span></p>")
-                           .arg(code));
+                           .arg(plateMode?plate:code));
         ui->plate_number_label->setText("Успешно!");
         ui->enter_time_label->setText(b_out_time.toString("dd.MM.yyyy H:mm"));
         ui->enter_bareer_label->setText(QString::number(bSettings->modeSettings().bareerNumber));
@@ -161,10 +170,6 @@ void MainWindow::proceedCode(QString code, bool plateMode)
 
         bTimer.start();
 
-        if(!plateMode){
-            connect(&manager, &QNetworkAccessManager::finished, this, &MainWindow::handleReply);
-            manager.get(request);
-        }
         return;
     }
 
@@ -172,9 +177,9 @@ void MainWindow::proceedCode(QString code, bool plateMode)
     if(!query.isValid()){
         if(!query.exec(QString("SELECT in_time, in_number, out_time, price "
                                "FROM History "
-                               "WHERE out_time >= DATE_SUB(NOW() , INTERVAL 2 MINUTE) "
+                               "WHERE out_time >= DATE_SUB(NOW() , INTERVAL 5 MINUTE) "
                                "AND code=%1 LIMIT 1")
-                       .arg(code))){
+                       .arg(plateMode?plate:code))){
             bDb.debugQuery(query);
             return;
         }
@@ -183,7 +188,7 @@ void MainWindow::proceedCode(QString code, bool plateMode)
 
         if(!query.isValid()){
             ui->label->setText(QString("<p align=\"center\"><span style=\"font-size:100pt; color:#ff0000;\">%1</span></p>")
-                               .arg(code));
+                               .arg(plateMode?plate:code));
             ui->plate_number_label->setText("Не зафиксирован при въезде!");
             ui->enter_time_label->setText("");
             ui->enter_bareer_label->setText("");
@@ -218,10 +223,6 @@ void MainWindow::proceedCode(QString code, bool plateMode)
         openBareer();
         bTimer.start();
 
-        if(!plateMode){
-            connect(&manager, &QNetworkAccessManager::finished, this, &MainWindow::handleReply);
-            manager.get(request);
-        }
         return;
     }
 
@@ -258,13 +259,11 @@ void MainWindow::proceedCode(QString code, bool plateMode)
     double price = calculate_formula(query.value("price_formula").toString(),
                                      b_in_time.secsTo(b_out_time));
 
-    qDebug()<<b_id<<price;
-
     if(!query.exec(QString("CALL MoveToHistory('%1','%2','%3','%4');")
                    .arg(b_id)
                    .arg(price)
                    .arg(bSettings->modeSettings().bareerNumber)
-                   .arg(plateMode?QString(currentFrame):""))){
+                   .arg(plateMode?QString::number(results.epoch_time):""))){
         bDb.debugQuery(query);
         return;
     }
@@ -287,58 +286,31 @@ void MainWindow::proceedCode(QString code, bool plateMode)
 
     ui->plate_number_label->setText("Успешно деактивирован!");
 
-    print(code,time.toString(),price,b_in_time, b_out_time, b_in_number);
+    print(plateMode?plate:code,time.toString(),price,b_in_time, b_out_time, b_in_number);
     openBareer();
     bTimer.start();
-
-    if(!plateMode){
-        connect(&manager, &QNetworkAccessManager::finished, this, &MainWindow::handleReply);
-        manager.get(request);
-    }
-
-    return;
 }
 
-void MainWindow::handleReply(QNetworkReply *pReply)
+void MainWindow::print(const QString &code, const QString &dur, double price, const QDateTime &in_time, const QDateTime &out_time, const quint32 in)
 {
-    qDebug()<<"Starting reading reply";
-    currentFrame=pReply->readAll();
-    std::vector<char> vector(currentFrame.begin(),currentFrame.end());
-    results=openalpr.recognize(vector);
-
-    qDebug()<<"plates = "<<results.plates.size();
-
-    if(results.plates.size())
-        proceedCode(QString::fromStdString(results.plates[0].bestPlate.characters),true);
-
-    manager.get(request);
+    char t[1000];
+    sprintf(t,"printf '********************************\nTashkent Trade Center [%02d]\n\nKod: %d\nKirish vaqti: %s\nChiqish vaqti: %s\nTurgan vaqti: %s\nPul miqdori: %.2f\nKirish #: %d\n********** powered by GSS.UZ\n\n\n\n' >/dev/usb/lp0",
+            bSettings->modeSettings().bareerNumber,
+            code.toLatin1().data(),
+            in_time.toString("dd.MM.yyyy H:mm").toLatin1().data(),
+            out_time.toString("dd.MM.yyyy H:mm").toLatin1().data(),
+            dur.toLatin1().data(),
+            price,
+            in);
+    system(t);
 }
 
-void MainWindow::wiegandCallback(quint32 value)
-{
-    proceedCode(QString::number(value),false);
-}
-
-void MainWindow::showStatusMessage(const QString &message)
-{
-
-}
-
-void MainWindow::initActionsConnections()
+void MainWindow::initConnections()
 {
     connect(ui->configureButton, &QPushButton::clicked, bSettings, &SettingsDialog::show);
     connect(ui->aboutButton, &QPushButton::clicked, [this](){
         QMessageBox::about(this, tr("About ParkingACS"),
-                           tr("The <b>Attraction</b> is an Access Controll System for amusement parks "
-                              "with the following functionalities:"
-                              "<ul><li>Maintain tariffs</li>"
-                              "<li>Online deposit for visitors connected to their bracers</li>"
-                              "<li>Selling any type of products</li>"
-                              "<li>Work with Wiegand devices</li>"
-                              "<li>Run on any platform</li>"
-                              "<li>Controll the barrier<li>"
-                              "<li>Print cheque with full transactions<li></ul>"
-                              "<p align='right'>Author: <b>Nurnazarov Bakhmanyor Yunuszoda</b></p> <a align='right' href="
+                           tr("The <b>ParkingACS</b> is an Access Controll System for car parks!"                          "<p align='right'>Author: <b>Nurnazarov Bakhmanyor Yunuszoda</b></p> <a align='right' href="
                               "'http://bahman.byethost18.com'>[bahman.byethost18.com]</a>"));
     });
     connect(ui->connectButton,&QPushButton::clicked, [this](){
@@ -350,6 +322,15 @@ void MainWindow::initActionsConnections()
     connect(ui->disconnectButton,&QPushButton::clicked, [this](){
         bDb.closeConnection();
     });
+
+    connect(&bDb,&DatabaseManager::connectionChanged, [this](bool status){
+        if(status){
+            ui->statusBar->showMessage("Successfully connected!");
+        }
+        else exit(EXIT_FAILURE);
+    });
+
+    connect(&bTimer, &QTimer::timeout, this, &MainWindow::cleanupInterface);
 }
 
 void MainWindow::readSettings()
@@ -403,6 +384,21 @@ void MainWindow::writeSettings()
     settings.setValue("bareer_number",mode.bareerNumber);
     settings.setValue("mode",mode.mode);
     settings.setValue("cameraIP",mode.cameraIP);
+}
+
+void MainWindow::cleanupInterface()
+{
+    ui->label->setMovie(&movie);
+    movie.start();
+
+    ui->enter_time_label->setText("");
+    ui->enter_bareer_label->setText("");
+    ui->plate_number_label->setText("Ожидание!");
+
+    if(!bSettings->modeSettings().mode){
+        ui->exit_time_label->setText("");
+        ui->exit_bareer_label->setText("");
+    }
 }
 
 void MainWindow::openBareer()

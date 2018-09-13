@@ -6,7 +6,7 @@
 
 QT       += core gui sql network
 
-CONFIG += c++11
+CONFIG  += c++11
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -29,11 +29,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         MainWindow.cpp \
-    dialogs/SettingsDialog.cpp
+    dialogs/SettingsDialog.cpp \
+    CustomServer.cpp
 
 HEADERS += \
         MainWindow.h \
-    dialogs/SettingsDialog.h
+    dialogs/SettingsDialog.h \
+    CustomServer.h
 
 FORMS += \
         MainWindow.ui \
@@ -47,8 +49,9 @@ FORMS += \
 RESOURCES += \
     accesscontrollerresources.qrc
 
+
 unix|win32: LIBS += -lopenalpr
-unix:!macx: LIBS += -lwiringPi -lpthread
+unix:!macx: LIBS += -lwiringPi
 #unix:!macx: LIBS += -lpigpio   USE THIS IF YOU WORK WITH PIGPIO
 
 unix:!macx: LIBS += -L$$OUT_PWD/../Core/ -lCore
