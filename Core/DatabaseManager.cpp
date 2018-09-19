@@ -18,12 +18,7 @@ void DatabaseManager::debugError(const QSqlError &error)
     default:
         qWarning() << "Query KO:" << error.text();
         qWarning() << "Query text:" << error.text();
-//        instance().closeConnection();
-        instance().bDatabase->close();
-        instance().connectToDatabase(instance().bDatabase->hostName(),
-                                     instance().bDatabase->userName(),
-                                     instance().bDatabase->password(),
-                                     instance().bDatabase->port());
+        instance().closeConnection();
         break;
     }
 }
