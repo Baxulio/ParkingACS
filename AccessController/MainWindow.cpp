@@ -11,20 +11,38 @@
 #include "CustomServer.h"
 #include <QTcpSocket>
 
-//#include <QJsonDocument>
+#include <QJsonDocument>
+#include <QJsonArray>
 
 #include <QDebug>
+
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QtConcurrent/QtConcurrent>
+
+#include <QHostInfo>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     bDb(DatabaseManager::instance()),
-    bSettings(new SettingsDialog(this))
+    bSettings(new SettingsDialog(this)),
+    curCode("")
 {
     ui->setupUi(this);
 
     readSettings();
     initConnections();
+
+    QList<QHostAddress> hostList = QHostInfo::fromName(QHostInfo::localHostName()).addresses();
+    foreach (const QHostAddress& address, hostList) {
+        qDebug()<<address;
+
+        if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false) {
+            localHostIP = address.toString();
+        }
+    }
 
     CustomServer *server = new CustomServer(this);
 
@@ -48,22 +66,29 @@ MainWindow::MainWindow(QWidget *parent) :
 
                 arr = arr.mid(arr.indexOf('{'));
 
-                //                qDebug()<<"again"<<arr;
-                //        QJsonDocument doc;
-                //        QJsonObject obj;
-                //        QJsonParseError error;
+                //                qDebug()<<"again"<<arr.data();
+                QJsonDocument doc;
+                QJsonObject obj;
+                QJsonParseError error;
 
-                //            doc = QJsonDocument::fromJson(arr,&error);
+                doc = QJsonDocument::fromJson(arr,&error);
 
-                //            if(error.error != QJsonParseError::NoError){
-                //                qDebug()<<error.errorString();
-                //                socket->write("HTTP/1.1 400 Bad Request\r\n\r\n");
-                //                return;
-                //            }
-                //            obj = doc.object();
+                if(error.error != QJsonParseError::NoError){
+                    qDebug()<<error.errorString();
+                    socket->write("HTTP/1.1 400 Bad Request\r\n\r\n");
+                    return;
+                }
+                obj = doc.object();
+                QString img_url = obj["site_id"].toString()+obj["uuid"].toString()+".jpg";
+                QString code = obj["results"].toArray().first().toObject()["plate"].toString();
 
-                proceedCode(QString(),alpr::Alpr::fromJson(arr.toStdString()),true);
-
+                if(curCode==code and bTimer.isActive()){
+                    bTimer.start();
+                }
+                else {
+                    curCode=code;
+                    proceedCode(code,img_url,true);
+                }
                 socket->write("HTTP/1.1 200 OK\r\n\r\n");
                 socket->close();
             });
@@ -85,7 +110,7 @@ MainWindow::MainWindow(QWidget *parent) :
         exit(EXIT_FAILURE);
     }
 
-    movie.setFileName(":/images/notConnected-optimized.gif");
+    movie.setFileName(":/images/anim.gif");
     bTimer.setInterval(5000);
     cleanupInterface();
 
@@ -104,14 +129,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
     event->accept();
 }
 
-void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, bool plateMode)
+void MainWindow::proceedCode(const QString &code, const QString &img_url, bool plateMode)
 {
     movie.stop();
     bTimer.stop();
-
-    QString plate;
-    if(plateMode)
-        plate=QString::fromStdString(results.plates.front().bestPlate.characters);
 
     QSqlQuery query;
 
@@ -124,8 +145,8 @@ void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, boo
 
     QDateTime b_out_time = query.value("SYSDATE()").toDateTime();
 
-    if(!query.exec(QString("SELECT id, in_time,in_number "
-                           "FROM Active WHERE code='%1';").arg(plateMode?plate:code))){
+    if(!query.exec(QString("SELECT id, access_type, in_number, in_time "
+                           "FROM Active WHERE code='%1';").arg(code))){
         bDb.debugQuery(query);
         return;
     }
@@ -137,23 +158,53 @@ void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, boo
         if(query.isValid()){
 
             ui->label->setText(QString("<p align=\"center\"><span style=\"font-size:100pt; color:#005500;\">%1</span></p>")
-                               .arg(plateMode?plate:code));
-            ui->plate_number_label->setText("Уже зарегистрирован!");
+                               .arg(code));
+            QString access_type = query.value("access_type").toString();
+            if(access_type=="Оплата"){
+                ui->plate_number_label->setText("Уже зарегистрирован!");
+                if(plateMode)openBareer();
+            }
+            else if(access_type=="Допуск"){
+                ui->plate_number_label->setText("Уже допущен!");
+                if(plateMode)openBareer();
+            }
+            else if(access_type=="Запрет")
+                ui->plate_number_label->setText("Запрет!");
+
             ui->enter_time_label->setText(query.value("in_time").toDateTime().toString("dd.MM.yyyy H:mm"));
             ui->enter_bareer_label->setText(QString::number(bSettings->modeSettings().bareerNumber));
-
-            if(plateMode)openBareer();
 
             bTimer.start();
 
             return;
         }
-        query.prepare("INSERT INTO Active(`code`, `in_time`, `in_number`, `img`) "
-                      "VALUES(?,?,?,?);");
-        query.addBindValue(plateMode?plate:code);
-        query.addBindValue(b_out_time);
+
+        if(!query.exec(QString("SELECT access_type FROM Reserved_codes WHERE code='%1';").arg(code))){
+            bDb.debugQuery(query);
+            return;
+        }
+        query.next();
+        QString access_type = query.isValid()?query.value("access_type").toString():"Оплата";
+
+        query.prepare("INSERT INTO Active(`code`,`code_type`,`access_type`,`in_number`,`in_time`, `img`) "
+                      "VALUES(?,?,?,?,?,?);");
+        query.addBindValue(code);
+        query.addBindValue(plateMode?"Номер":"Карта");
+        query.addBindValue(access_type);
         query.addBindValue(bSettings->modeSettings().bareerNumber);
-        query.addBindValue(plateMode?QString::number(results.epoch_time):"");
+        query.addBindValue(b_out_time);
+
+        //    ??????????????????????????????????????????????
+        if(plateMode)
+            query.addBindValue(img_url);
+        else{
+            QString filename = QString("%1_%2.jpg").arg(code).arg(b_out_time.currentMSecsSinceEpoch());
+            query.addBindValue("http://"+localHostIP+"/plateimages/"+filename);
+            QtConcurrent::run(this, &MainWindow::grubImg,
+                              QUrl("http://"+bSettings->modeSettings().cameraIP+"/webcapture.jpg?command=snap&channel=1"),
+                              QString(filename));
+        }
+        //  ?????????????
 
         if(!query.exec()){
             bDb.debugQuery(query);
@@ -161,12 +212,20 @@ void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, boo
         }
 
         ui->label->setText(QString("<p align=\"center\"><span style=\"font-size:100pt; color:#005500;\">%1</span></p>")
-                           .arg(plateMode?plate:code));
-        ui->plate_number_label->setText("Успешно!");
+                           .arg(code));
+        if(access_type=="Оплата"){
+            ui->plate_number_label->setText("Успешно!");
+            openBareer();
+        }
+        else if(access_type=="Допуск"){
+            ui->plate_number_label->setText("Допуск!");
+            openBareer();
+        }
+        else if(access_type=="Запрет")
+            ui->plate_number_label->setText("Запрет!");
+
         ui->enter_time_label->setText(b_out_time.toString("dd.MM.yyyy H:mm"));
         ui->enter_bareer_label->setText(QString::number(bSettings->modeSettings().bareerNumber));
-
-        openBareer();
 
         bTimer.start();
 
@@ -175,11 +234,11 @@ void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, boo
 
     //EXIT
     if(!query.isValid()){
-        if(!query.exec(QString("SELECT in_time, in_number, out_time, price "
+        if(!query.exec(QString("SELECT access_type, in_number, in_time, out_time, price "
                                "FROM History "
                                "WHERE out_time >= DATE_SUB(NOW() , INTERVAL 5 MINUTE) "
-                               "AND code=%1 LIMIT 1")
-                       .arg(plateMode?plate:code))){
+                               "AND code='%1' LIMIT 1")
+                       .arg(code))){
             bDb.debugQuery(query);
             return;
         }
@@ -188,7 +247,7 @@ void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, boo
 
         if(!query.isValid()){
             ui->label->setText(QString("<p align=\"center\"><span style=\"font-size:100pt; color:#ff0000;\">%1</span></p>")
-                               .arg(plateMode?plate:code));
+                               .arg(code));
             ui->plate_number_label->setText("Не зафиксирован при въезде!");
             ui->enter_time_label->setText("");
             ui->enter_bareer_label->setText("");
@@ -201,6 +260,7 @@ void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, boo
 
         QDateTime in_time = query.value("in_time").toDateTime();
         QDateTime out_time = query.value("out_time").toDateTime();
+        QString access_type = query.value("access_type").toString();
 
         int diff = in_time.time().secsTo(out_time.time());
         int hours = diff/3600;
@@ -208,21 +268,32 @@ void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, boo
         int secs = (diff%3600)%60;
         QTime time(hours,minutes,secs);
 
-        ui->label->setText(QString("<p align=\"center\"><span style=\" font-size:100pt;\">%1</span></p>"
-                                   "<p align=\"center\"><span style=\" font-size:250pt; color:#ea0003;\">%2 </span><span style=\" font-size:48pt; color:#ea0003;\">(UZS)</span></p>")
-                           .arg(time.toString()).arg(query.value("price").toString()));
-
+        ui->plate_number_label->setText(QString("%1 : уже деактивирован!").arg(code));
 
         ui->enter_time_label->setText(in_time.toString("dd.MM.yyyy H:mm"));
         ui->enter_bareer_label->setText(query.value("in_number").toString());
         ui->exit_time_label->setText(out_time.toString("dd.MM.yyyy H:mm"));
         ui->exit_bareer_label->setText(QString::number(bSettings->modeSettings().bareerNumber));
 
-        ui->plate_number_label->setText("Код уже деактивирован!");
+        if(access_type=="Оплата"){
+            ui->label->setText(QString("<p align=\"center\"><span style=\" font-size:70pt;\">%1</span></p>"
+                                       "<p align=\"center\"><span style=\" font-size:150pt; color:#ea0003;\">%2 </span><span style=\" font-size:48pt; color:#ea0003;\">(UZS)</span></p>")
+                               .arg(time.toString()).arg(query.value("price").toString()));
+            openBareer();
+        }
+        else if(access_type=="Допуск"){
+            ui->label->setText(QString("<p align=\"center\"><span style=\" font-size:100pt;\">%1</span></p>"
+                                       "<p align=\"center\"><span style=\" font-size:250pt; color:#ea0003;\">%2</span></p>")
+                               .arg(time.toString()).arg(access_type));
+            openBareer();
+        }
+        else {
+            ui->label->setText(QString("<p align=\"center\"><span style=\" font-size:100pt;\">%1</span></p>"
+                                       "<p align=\"center\"><span style=\" font-size:250pt; color:#ea0003;\">%2</span></p>")
+                               .arg(time.toString()).arg(access_type));
+        }
 
-        openBareer();
         bTimer.start();
-
         return;
     }
 
@@ -230,40 +301,45 @@ void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, boo
     QDateTime b_in_time = query.value("in_time").toDateTime();
     quint32  b_in_number = query.value("in_number").toUInt();
 
-    //    if(!query.exec(QString("SELECT Price.price_formula, Cards.subscription "
-    //                           "FROM Price INNER JOIN Cards ON Price.id = Cards.priceId "
-    //                           "WHERE Cards.code = %1;")
-    //                   .arg(code))){
-    //        bDb.debugQuery(query);
-    //        return;
-    //    }
-
-    //    query.next();
-
-    //    if(!query.isValid()){
-
-    if(!query.exec("SELECT price_formula FROM Price WHERE car_type = 'Другое'")){
+    if(!query.exec(QString("SELECT Price.price_formula, Reserved_codes.access_type "
+                           "FROM Price INNER JOIN Reserved_codes ON Price.id = Reserved_codes.price_id "
+                           "WHERE Reserved_codes.code = '%1' LIMIT 1;")
+                   .arg(code))){
         bDb.debugQuery(query);
         return;
     }
+
     query.next();
 
-    //    }
-    //    else if(query.value("subscription").toBool()){
-    //        emit Result(Replies::WIEGAND_IS_MONTHLY,b_in_time,b_in_number,b_out_time);
-    //        return;
-    //    }
+    QString access_type="Оплата";
 
+    if(!query.isValid()){
 
+        if(!query.exec("SELECT price_formula FROM Price WHERE car_type = 'Другое'")){
+            bDb.debugQuery(query);
+            return;
+        }
+        query.next();
+    }
+    else access_type=query.value("access_type").toString();
 
     double price = calculate_formula(query.value("price_formula").toString(),
                                      b_in_time.secsTo(b_out_time));
 
+    QString filename;
+    if(!plateMode)
+    {
+        filename = QString("%1_%2.jpg").arg(code).arg(b_out_time.currentMSecsSinceEpoch());
+        QtConcurrent::run(this, &MainWindow::grubImg,
+                          QUrl("http://"+bSettings->modeSettings().cameraIP+"/webcapture.jpg?command=snap&channel=1"),
+                          QString(filename));
+    }
     if(!query.exec(QString("CALL MoveToHistory('%1','%2','%3','%4');")
                    .arg(b_id)
                    .arg(price)
                    .arg(bSettings->modeSettings().bareerNumber)
-                   .arg(plateMode?QString::number(results.epoch_time):""))){
+                   ///////////////////////////////
+                   .arg(plateMode?img_url:"http://"+localHostIP+"/plateimages/"+filename))){
         bDb.debugQuery(query);
         return;
     }
@@ -274,21 +350,47 @@ void MainWindow::proceedCode(const QString &code, alpr::AlprResults results, boo
     int secs = (diff%3600)%60;
     QTime time(hours,minutes,secs);
 
-    ui->label->setText(QString("<p align=\"center\"><span style=\" font-size:100pt;\">%1</span></p>"
-                               "<p align=\"center\"><span style=\" font-size:250pt; color:#ea0003;\">%2 </span><span style=\" font-size:48pt; color:#ea0003;\">(UZS)</span></p>")
-                       .arg(time.toString()).arg(price));
-
+    ui->plate_number_label->setText(QString("%1 : Успешно деактивирован!").arg(code));
 
     ui->enter_time_label->setText(b_in_time.toString("dd.MM.yyyy H:mm"));
     ui->enter_bareer_label->setText(QString::number(b_in_number));
     ui->exit_time_label->setText(b_out_time.toString("dd.MM.yyyy H:mm"));
     ui->exit_bareer_label->setText(QString::number(bSettings->modeSettings().bareerNumber));
 
-    ui->plate_number_label->setText("Успешно деактивирован!");
+    if(access_type=="Оплата"){
+        ui->label->setText(QString("<p align=\"center\"><span style=\" font-size:70pt;\">%1</span></p>"
+                                   "<p align=\"center\"><span style=\" font-size:150pt; color:#ea0003;\">%2 </span><span style=\" font-size:48pt; color:#ea0003;\">(UZS)</span></p>")
+                           .arg(time.toString()).arg(price));
+        print(code,time.toString(),price,b_in_time, b_out_time, b_in_number);
+        openBareer();
+    }
+    else if(access_type=="Допуск"){
+        ui->label->setText(QString("<p align=\"center\"><span style=\" font-size:100pt;\">%1</span></p>"
+                                   "<p align=\"center\"><span style=\" font-size:250pt; color:#ea0003;\">%2 </span></p>")
+                           .arg(time.toString()).arg(access_type));
+        openBareer();
+    }
+    else {
+        ui->label->setText(QString("<p align=\"center\"><span style=\" font-size:100pt;\">%1</span></p>"
+                                   "<p align=\"center\"><span style=\" font-size:250pt; color:#ea0003;\">%2 </span></p>")
+                           .arg(time.toString()).arg(access_type));
+    }
 
-    print(plateMode?plate:code,time.toString(),price,b_in_time, b_out_time, b_in_number);
-    openBareer();
     bTimer.start();
+}
+
+bool MainWindow::grubImg(const QUrl &url, const QString &filename)
+{
+    QNetworkAccessManager manager;
+    QNetworkReply *reply = manager.get(QNetworkRequest(url));
+    connect(reply, &QNetworkReply::finished, [filename,reply]{
+        QFile file("/var/www/html/plateimages/"+filename);
+        file.open(QIODevice::WriteOnly);
+        file.write(reply->readAll());
+        file.close();
+        reply->deleteLater();
+    });
+    return reply->waitForReadyRead(1000);
 }
 
 void MainWindow::print(const QString &code, const QString &dur, double price, const QDateTime &in_time, const QDateTime &out_time, const quint32 in)

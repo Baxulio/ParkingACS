@@ -9,5 +9,6 @@
         <file>resources/warning.png</file>
         <file>images/information-optimized.gif</file>
         <file>images/notConnected-optimized.gif</file>
+        <file>images/anim.gif</file>
     </qresource>
 </RCC>

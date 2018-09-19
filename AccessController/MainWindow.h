@@ -25,6 +25,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
+    bool grubImg(const QUrl &url,const QString &filename);
 
 private:
     Ui::MainWindow *ui;
@@ -34,11 +35,13 @@ private:
     QTimer bTimer;
     QMovie movie;
 
+    QString curCode;
+    QString localHostIP;
 protected:
     void closeEvent(QCloseEvent *event) override;
 
 public slots:
-    void proceedCode(const QString &code, alpr::AlprResults results = alpr::AlprResults(), bool plateMode=false);
+    void proceedCode(const QString &code, const QString &img_url = QString(), bool plateMode=false);
 
 private slots:
     void initConnections();
@@ -50,6 +53,7 @@ private slots:
     void openBareer();
     void print(const QString &code, const QString &dur, double price, const QDateTime &in_time, const QDateTime &out_time, const quint32 in);
     double calculate_formula(const QString &formula, const quint64 &secs);
+
 };
 
 #endif // MAINWINDOW_H
