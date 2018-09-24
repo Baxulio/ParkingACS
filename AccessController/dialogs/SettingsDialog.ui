@@ -186,7 +186,7 @@
           <item>
            <widget class="QRadioButton" name="enterRadio">
             <property name="text">
-             <string>Вход</string>
+             <string>Въезд</string>
             </property>
             <property name="checked">
              <bool>true</bool>
@@ -196,7 +196,7 @@
           <item>
            <widget class="QRadioButton" name="exitRadio">
             <property name="text">
-             <string>Выход</string>
+             <string>Выезд</string>
             </property>
            </widget>
           </item>

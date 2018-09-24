@@ -31,18 +31,20 @@ SOURCES += \
         MainWindow.cpp \
     dialogs/SettingsDialog.cpp \
     CustomServer.cpp \
-    StatusForm.cpp
+    StatusItemForm.cpp \
+    ImageGrabber.cpp
 
 HEADERS += \
         MainWindow.h \
     dialogs/SettingsDialog.h \
     CustomServer.h \
-    StatusForm.h
+    ImageGrabber.h \
+    StatusItemForm.h
 
 FORMS += \
         MainWindow.ui \
     dialogs/SettingsDialog.ui \
-    StatusForm.ui
+    StatusItemForm.ui
 
 # Set your rules for deployment.
 #qnx: target.path = /tmp/$${TARGET}/bin
