@@ -25,6 +25,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
+    bool grubImg(const QUrl &url,const QString &filename);
 
 private:
     Ui::MainWindow *ui;
@@ -53,8 +54,6 @@ private slots:
     void print(const QString &code, const QString &dur, double price, const QDateTime &in_time, const QDateTime &out_time, const quint32 in);
     double calculate_formula(const QString &formula, const quint64 &secs);
 
-signals:
-    void grub(QString filename, QString urls);
 };
 
 #endif // MAINWINDOW_H

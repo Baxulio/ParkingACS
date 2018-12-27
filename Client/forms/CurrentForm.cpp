@@ -9,6 +9,7 @@
 #include <QTextDocument>
 #include <QTextStream>
 #include <QFile>
+#include <QFileDialog>
 
 CurrentForm::CurrentForm(QWidget *parent) :
     QWidget(parent),
@@ -26,7 +27,7 @@ CurrentForm::CurrentForm(QWidget *parent) :
     connect(&bDb, &DatabaseManager::refresh, this, &CurrentForm::on_refresh);
 
     connect(ui->tableView, &QTableView::doubleClicked, [this](QModelIndex indx){
-        QUrl url = model->data(model->index(indx.row(),model->fieldIndex("img")),Qt::EditRole).toUrl();
+        QUrl url = proxyModel->data(proxyModel->index(indx.row(),model->fieldIndex("img")),Qt::EditRole).toUrl();
         qDebug()<<url;
         QNetworkRequest req(url);
         QNetworkReply *reply = networkManager.get(req);
@@ -45,6 +46,8 @@ CurrentForm::CurrentForm(QWidget *parent) :
     });
 
     ui->filter_but->addAction(ui->actionFilter_today);
+
+    on_clean_but_clicked();
 }
 
 CurrentForm::~CurrentForm()
@@ -88,9 +91,9 @@ void CurrentForm::updateInfo()
                     cards_count++:numbers_count++;
     }
 
-    ui->cards_label->setText(QString("<span style=\"font-size:10pt; color:#55aaff;\">%1</span>").arg(cards_count));
-    ui->numbers_label->setText(QString("<span style=\"font-size:10pt; color:#55aaff;\">~%1</span>").arg(numbers_count));
-    ui->total_label->setText(QString("<span style=\"font-size:14pt; color:#55aaff;\">~%1</span>").arg(cards_count+numbers_count));
+    ui->cards_label->setText(QString::number(cards_count));
+    ui->numbers_label->setText(QString::number(numbers_count));
+    ui->total_label->setText(QString::number(cards_count+numbers_count));
 }
 
 void CurrentForm::clearFields()
@@ -98,7 +101,7 @@ void CurrentForm::clearFields()
     ui->code_lineEdit->clear();
     ui->code_card_type_check->setChecked(true);
     ui->code_plate_type_check->setChecked(true);
-    ui->in_number_spin->clear();
+    ui->in_number_spin->setValue(0);
     ui->in_from_dateTime->clear();
     ui->in_to_dateTime->clear();
     ui->allowed_check->setChecked(true);
@@ -130,12 +133,8 @@ void CurrentForm::on_in_today_but_clicked()
 void CurrentForm::on_clean_but_clicked()
 {
     clearFields();
+    on_in_today_but_clicked();
     syncFieldsWithProxy();
-
-    //    ui->in_from_dateTime->setDateTime(ui->in_from_dateTime->minimumDateTime());
-    //    proxyModel->setIn_Time_From(QDateTime());
-    //    ui->in_to_dateTime->setDateTime(ui->in_to_dateTime->maximumDateTime());
-    //    proxyModel->setIn_Time_To(QDateTime());
 
     proxyModel->invalidateFilterByMyself();
     updateInfo();
@@ -213,6 +212,18 @@ void CurrentForm::on_print_but_clicked()
 
 void CurrentForm::on_csv_but_clicked()
 {
+    QString filename = QFileDialog::getSaveFileName(
+                this,
+                "Save CSV",
+                QString("%1/%2_Текущее").arg(QDir::homePath(),QDate::currentDate().toString("dd_MM_yyyy")),
+                "CSV Document (*.csv)");
+
+    QFile csvFile(filename);
+    if(!csvFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        emit message("<font color = 'red'>Не удалось открыть файл!");
+
+    QTextStream out(&csvFile);
+
     QString str;
 
     int rows = proxyModel->rowCount();
@@ -231,10 +242,9 @@ void CurrentForm::on_csv_but_clicked()
         }
         str+="\n";
     }
-    QFile csvFile(QString("%1.csv").arg(QDate::currentDate().toString("dd_MM_yyyy")));
-    if(csvFile.open(QIODevice::WriteOnly | QIODevice::Truncate)){
-        QTextStream out(&csvFile);
-        out<<str;
-        csvFile.close();
-    }
+
+    out<<str;
+    csvFile.close();
+
+    emit message(QString("<font color='green'>Успешно сохранено: %1 записей").arg(rows));
 }

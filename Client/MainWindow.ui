@@ -441,6 +441,44 @@ QPushButton:checked{
          </widget>
         </item>
         <item>
+         <widget class="QPushButton" name="dashboard_but">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>25</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <family>MS Shell Dlg 2</family>
+            <pointsize>8</pointsize>
+            <weight>9</weight>
+            <italic>false</italic>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Главное</string>
+          </property>
+          <property name="icon">
+           <iconset resource="clientresources.qrc">
+            <normaloff>:/resources/glyphs/35.png</normaloff>:/resources/glyphs/35.png</iconset>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+          <property name="autoExclusive">
+           <bool>true</bool>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="current_but">
           <property name="minimumSize">
            <size>

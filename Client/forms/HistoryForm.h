@@ -8,6 +8,7 @@
 #include "models/CustomSqlTableModel.h"
 
 #include <QNetworkAccessManager>
+#include "dialogs/SettingsDialog.h"
 
 namespace Ui {
 class HistoryForm;
@@ -18,7 +19,7 @@ class HistoryForm : public QWidget
     Q_OBJECT
 
 public:
-    explicit HistoryForm(QWidget *parent = 0);
+    explicit HistoryForm(SettingsDialog &set, QWidget *parent = 0);
     ~HistoryForm();
 
 private slots:
@@ -36,6 +37,7 @@ private slots:
 
 private:
     Ui::HistoryForm *ui;
+    SettingsDialog &bSettings;
     QNetworkAccessManager networkManager;
 
     DatabaseManager &bDb;
@@ -50,6 +52,10 @@ private:
 signals:
     void back();
     void message(const QString &text);
+
+    // QWidget interface
+protected:
+    void keyPressEvent(QKeyEvent *event) override;
 };
 
 #endif // HISTORYFORM_H

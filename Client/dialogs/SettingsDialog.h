@@ -2,6 +2,7 @@
 #define SETTINGSDIALOG_H
 
 #include <QDialog>
+#include <QStringListModel>
 
 namespace Ui {
 class SettingsDialog;
@@ -25,12 +26,20 @@ public:
     ServerSettings serverSettings() const {return bServerSettings;}
     void setServerSettings(const ServerSettings server);
 
+    QStringList urls();
+    void setUrls(QStringList strl);
+
 private:
     Ui::SettingsDialog *ui = nullptr;
     ServerSettings bServerSettings;
+    QStringListModel *model;
 
 private slots:
     void apply();
+
+    void on_add_but_clicked();
+
+    void on_del_but_clicked();
 
 private:
     void updateSettings();

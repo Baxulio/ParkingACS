@@ -193,3 +193,14 @@ void AccessParametersForm::on_price_table_clicked(const QModelIndex &index)
     ui->code_table->hideColumn(codesModel->fieldIndex("id"));
     ui->code_table->hideColumn(codesModel->fieldIndex("price_id"));
 }
+
+void AccessParametersForm::on_search_but_clicked()
+{
+    if(ui->code_table->isEnabled()){
+        for(int i=0; i<codesModel->rowCount(); i++){
+            if(codesModel->index(i,codesModel->fieldIndex("code")).data(Qt::EditRole).toString().startsWith(ui->search_lineEdit->text(),Qt::CaseInsensitive)){
+                ui->code_table->selectRow(i); return;
+            }
+        }
+    }
+}

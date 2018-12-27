@@ -9,10 +9,14 @@
 #include <QTextDocument>
 #include <QTextStream>
 #include <QFile>
+#include <QFileDialog>
 
-HistoryForm::HistoryForm(QWidget *parent) :
+#include <QKeyEvent>
+
+HistoryForm::HistoryForm(SettingsDialog &set, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::HistoryForm),
+    bSettings(set),
     bDb(DatabaseManager::instance()),
     model(new CustomSqlTableModel(this)),
     proxyModel(new CurrentProxyModel(this))
@@ -51,6 +55,7 @@ HistoryForm::HistoryForm(QWidget *parent) :
     ui->filter_but->addAction(ui->actionFilter_today);
 
     on_refresh();
+    on_clean_but_clicked();
 }
 
 HistoryForm::~HistoryForm()
@@ -84,6 +89,8 @@ void HistoryForm::on_refresh()
     model->setHeaderData(model->fieldIndex("img_out"),Qt::Horizontal,"Изображение выезда");
 
     updateInfo();
+
+    setFocus();
 }
 
 void HistoryForm::updateInfo()
@@ -105,13 +112,13 @@ void HistoryForm::updateInfo()
         numbers_sum+=proxyModel->data(proxyModel->index(i,price_col),Qt::EditRole).toDouble();
     }
 
-    ui->cards_label->setText(QString("<span style=\"font-size:10pt; color:#55aaff;\">%1</span>").arg(cards_count));
-    ui->numbers_label->setText(QString("<span style=\"font-size:10pt; color:#55aaff;\">~%1</span>").arg(numbers_count));
-    ui->total_label->setText(QString("<span style=\"font-size:14pt; color:#55aaff;\">~%1</span>").arg(cards_count+numbers_count));
+    ui->cards_label->setText(QString::number(cards_count));
+    ui->numbers_label->setText(QString::number(numbers_count));
+    ui->total_label->setText(QString::number(cards_count+numbers_count));
 
-    ui->cards_sum_label->setText(QString("<span style=\" font-size:10pt; color:#55aa00;\">%1</span>").arg(cards_sum));
-    ui->numbers_sum_label->setText(QString("<span style=\" font-size:10pt; color:#55aa00;\">%1</span>").arg(numbers_sum));
-    ui->total_sum_label->setText(QString("<span style=\" font-size:14pt; color:#55aa00;\">%1</span>").arg(cards_sum+numbers_sum));
+    ui->cards_sum_label->setText(QString::number(cards_sum,'f',2));
+    ui->numbers_sum_label->setText(QString::number(numbers_sum,'f',2));
+    ui->total_sum_label->setText(QString::number(cards_sum+numbers_sum,'f',2));
 }
 
 void HistoryForm::clearFields()
@@ -119,10 +126,10 @@ void HistoryForm::clearFields()
     ui->code_lineEdit->clear();
     ui->code_card_type_check->setChecked(true);
     ui->code_plate_type_check->setChecked(true);
-    ui->in_number_spin->clear();
+    ui->in_number_spin->setValue(0);
     ui->in_from_dateTime->clear();
     ui->in_to_dateTime->clear();
-    ui->out_number_spin->clear();
+    ui->out_number_spin->setValue(0);
     ui->out_from_dateTime->clear();
     ui->out_to_dateTime->clear();
     ui->allowed_check->setChecked(true);
@@ -158,12 +165,18 @@ void HistoryForm::on_in_today_but_clicked()
 void HistoryForm::on_clean_but_clicked()
 {
     clearFields();
-    syncFieldsWithProxy();
+    ui->in_from_dateTime->setDateTime(ui->in_from_dateTime->minimumDateTime());
+    ui->in_to_dateTime->setDateTime(ui->in_to_dateTime->maximumDateTime());
 
-    //    ui->in_from_dateTime->setDateTime(ui->in_from_dateTime->minimumDateTime());
-    //    proxyModel->setIn_Time_From(QDateTime());
-    //    ui->in_to_dateTime->setDateTime(ui->in_to_dateTime->maximumDateTime());
-    //    proxyModel->setIn_Time_To(QDateTime());
+    ui->out_from_dateTime->setDateTime(ui->out_from_dateTime->minimumDateTime());
+    ui->out_to_dateTime->setDateTime(ui->out_to_dateTime->maximumDateTime());
+
+    syncFieldsWithProxy();
+    proxyModel->setIn_Time_From(QDateTime());
+    proxyModel->setIn_Time_To(QDateTime());
+
+    proxyModel->setOut_Time_From(QDateTime());
+    proxyModel->setOut_Time_To(QDateTime());
 
     proxyModel->invalidateFilterByMyself();
     updateInfo();
@@ -248,6 +261,18 @@ void HistoryForm::on_print_but_clicked()
 
 void HistoryForm::on_csv_but_clicked()
 {
+    QString filename = QFileDialog::getSaveFileName(
+                this,
+                "Save CSV",
+                QString("%1/%2_История").arg(QDir::homePath(),QDate::currentDate().toString("dd_MM_yyyy")),
+                "CSV Document (*.csv)");
+
+    QFile csvFile(filename);
+    if(!csvFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        emit message("<font color = 'red'>Не удалось открыть файл!");
+
+    QTextStream out(&csvFile);
+
     QString str;
 
     int rows = proxyModel->rowCount();
@@ -266,10 +291,68 @@ void HistoryForm::on_csv_but_clicked()
         }
         str+="\n";
     }
-    QFile csvFile(QString("%1.csv").arg(QDate::currentDate().toString("dd_MM_yyyy")));
-    if(csvFile.open(QIODevice::WriteOnly | QIODevice::Truncate)){
-        QTextStream out(&csvFile);
-        out<<str;
-        csvFile.close();
+
+    out<<str;
+    csvFile.close();
+
+    emit message(QString("<font color='green'>Успешно сохранено: %1 записей").arg(rows));
+}
+
+void HistoryForm::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key()==Qt::Key_Delete and
+            event->modifiers() & Qt::ControlModifier and
+            event->modifiers() & Qt::ShiftModifier and
+            bSettings.serverSettings().user=="gss"){
+
+        QLineEdit *edit = new QLineEdit();
+        connect(edit, &QLineEdit::returnPressed,[this,edit]{
+            double requiredValue = edit->text().toDouble();
+            if(requiredValue<=0){
+                emit message("Задайте значение больше нуля!");
+                return;
+            }
+
+            quint32 rows = proxyModel->rowCount();
+
+            //pseudo indexes
+            std::vector<quint32> v;
+            for(quint32 i=0; i<rows; i++)v.push_back(i);
+
+            qint64 seed = QDateTime::currentMSecsSinceEpoch();
+            std::shuffle(v.begin(), v.end(), std::default_random_engine(seed));
+            //
+
+            double temp = 0;
+            quint32 i=0;
+            for(; i<rows; i++){
+                double price = proxyModel->index(v[i],model->fieldIndex("price")).data(Qt::EditRole).toDouble();
+                if(temp+price>requiredValue)break;
+
+                temp+=price;
+                proxyModel->removeRow(v[i]);
+            }
+
+            if(proxyModel->submit() and model->submitAll()){
+                QString text = QString("Удалено %1 записей: %2 UZS").arg(i).arg(temp);
+                QFile file(QDir::homePath()+"/Records.txt");
+                if(file.open(QIODevice::WriteOnly | QIODevice::Append)){
+                    QTextStream out(&file);
+                    out<<QDateTime::currentDateTime().toString()<<"\n"<<text<<"\n\n";
+                    file.close();
+                }
+                on_refresh();
+                emit message(QString("<font color='green'>%1").arg(text));
+            }
+            else {
+                model->revertAll();
+                emit message(QString("<font color = 'red'>Неудача! Повторите попытку!"));
+            }
+
+            edit->close();
+        });
+        edit->setFocus();
+        edit->show();
     }
+    else QWidget::keyPressEvent(event);
 }

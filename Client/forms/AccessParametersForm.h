@@ -31,6 +31,8 @@ private slots:
     void on_delete_code_but_clicked();
     void on_price_table_clicked(const QModelIndex &index);
 
+    void on_search_but_clicked();
+
 private:
     Ui::AccessParametersForm *ui;
     DatabaseManager &bDb;

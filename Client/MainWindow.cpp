@@ -10,6 +10,7 @@
 #include "dialogs/SettingsDialog.h"
 #include "delegates/SlidingStackedWidget.h"
 
+#include "forms/Dashboard.h"
 #include "forms/CurrentForm.h"
 #include "forms/HistoryForm.h"
 #include "forms/AccessParametersForm.h"
@@ -25,7 +26,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->stack_widget_layout->insertWidget(0,bStackedWidget,1);
     bStackedWidget->setSpeed(370);
     connect(bStackedWidget, &SlidingStackedWidget::currentChanged, [this](int n){
-        if(qobject_cast<CurrentForm*>(bStackedWidget->widget(n)))
+        if(qobject_cast<Dashboard*>(bStackedWidget->widget(n)))
+            ui->dashboard_but->setChecked(true);
+        else if(qobject_cast<CurrentForm*>(bStackedWidget->widget(n)))
             ui->current_but->setChecked(true);
         else if(qobject_cast<HistoryForm*>(bStackedWidget->widget(n)))
             ui->history_but->setChecked(true);
@@ -61,8 +64,8 @@ MainWindow::MainWindow(QWidget *parent) :
         ui->splitter->setEnabled(status);
     });
 
-    ui->current_but->toggled(true);
-    ui->connectButton->clicked();
+    ui->dashboard_but->toggled(true);
+    emit bDb.connectionChanged(false);
 }
 
 MainWindow::~MainWindow()
@@ -145,6 +148,20 @@ void MainWindow::initActionsConnections()
         bDb.closeConnection();
     });
 
+    connect(ui->dashboard_but, &QPushButton::toggled, [this](bool checked){
+        if(!checked)return;
+        for (int i = 0; i < bStackedWidget->count(); i++) {
+            if(qobject_cast<Dashboard*>(bStackedWidget->widget(i))){
+                bStackedWidget->slideInIdx(i/*,SlidingStackedWidget::t_direction::AUTOMATIC*/);
+                return;
+            }
+        }
+        Dashboard *dashboard = new Dashboard(*bSettings, this);
+        bStackedWidget->slideInIdx(bStackedWidget->addWidget(dashboard));
+
+        connect(dashboard, &Dashboard::message, this, &MainWindow::showStatusMessage);
+    });
+
     connect(ui->current_but, &QPushButton::toggled, [this](bool checked){
         if(!checked)return;
         for (int i = 0; i < bStackedWidget->count(); i++) {
@@ -170,7 +187,7 @@ void MainWindow::initActionsConnections()
                 return;
             }
         }
-        HistoryForm *historyForm = new HistoryForm(this);
+        HistoryForm *historyForm = new HistoryForm(*bSettings, this);
         bStackedWidget->slideInIdx(bStackedWidget->addWidget(historyForm));
         connect(historyForm, &HistoryForm::back, [this, historyForm](){
             if(bStackedWidget->count()<2)return;
@@ -220,6 +237,8 @@ void MainWindow::readSettings()
     server.port = settings.value("server_port",quint32()).toUInt();
 
     bSettings->setServerSettings(server);
+
+    bSettings->setUrls(settings.value("urls", QStringList()).toStringList());
 }
 
 void MainWindow::writeSettings()
@@ -232,4 +251,6 @@ void MainWindow::writeSettings()
     settings.setValue("server_user", server.user);
     settings.setValue("server_password", server.password);
     settings.setValue("server_port", server.port);
+
+    settings.setValue("urls",bSettings->urls());
 }

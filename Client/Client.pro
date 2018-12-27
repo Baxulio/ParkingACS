@@ -38,7 +38,10 @@ SOURCES += \
     models/CurrentProxyModel.cpp \
     dialogs/PictureDialog.cpp \
     delegates/AccessTypeDelegate.cpp \
-    delegates/DateDelegate.cpp
+    delegates/DateDelegate.cpp \
+    forms/Dashboard.cpp \
+    delegates/FlowLayout.cpp \
+    delegates/DashboardItem.cpp
 
 HEADERS += \
         MainWindow.h \
@@ -52,7 +55,10 @@ HEADERS += \
     models/CurrentProxyModel.h \
     dialogs/PictureDialog.h \
     delegates/AccessTypeDelegate.h \
-    delegates/DateDelegate.h
+    delegates/DateDelegate.h \
+    forms/Dashboard.h \
+    delegates/FlowLayout.h \
+    delegates/DashboardItem.h
 
 FORMS += \
         MainWindow.ui \
@@ -62,7 +68,9 @@ FORMS += \
     forms/CurrentForm.ui \
     forms/AccessParametersForm.ui \
     dialogs/PictureDialog.ui \
-    delegates/FilterWidget.ui
+    delegates/FilterWidget.ui \
+    forms/Dashboard.ui \
+    delegates/DashboardItem.ui
 
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../Core/release/ -lCore
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../Core/debug/ -lCore
